@@ -9,17 +9,24 @@ pkg load image
 
 #Constants
 dirpath = 'leafsnap-dataset/dataset/images/field';
-num_sp = 2;
+num_sp = 10;
 
 #Load leaf paths
 species = readdir(dirpath)(3:end);
 leaves = cell(num_sp,1);
 num_leaves = zeros(num_sp,1);
 leaf_ind = zeros(num_sp,1);
+fprintf('\n');
 for sp = 1:num_sp
-  leaves{sp} = readdir(strcat(dirpath,'/',species{sp}))(3:end);
+  tempcell = readdir(strcat(dirpath,'/',species{sp}))(3:end);
+  for filenum = 1:length(tempcell)
+    if tempcell{filenum}(end-3:end) == '.jpg'
+      leaves{sp}{end+1} = tempcell{filenum};
+    endif
+  endfor
   num_leaves(sp) = length(leaves{sp});
-  leaf_ind(sp:end) += num_leaves(sp); 
+  leaf_ind(sp:end) += num_leaves(sp);
+  fprintf('\rSpecies loaded: %d', sp); 
 endfor
 
 leaf_ind = [0;leaf_ind];
@@ -28,17 +35,19 @@ tot_leaves = sum(num_leaves);
 #Load images
 leafimgs = cell(tot_leaves,1);
 sp = 1;
+fprintf('\n');
 for leaf = 1:tot_leaves
   #find species of leaf
   if leaf > leaf_ind(sp+1)
     sp += 1;
   endif
   #load leaf image
+  fprintf('\rLoading leaf image %d from species %d', leaf,sp)
   leafimgs{leaf} = imread(strcat(dirpath,'/',species{sp},'/',leaves{sp}{leaf-leaf_ind(sp)}));
 endfor
 
 #clear unused variables. Only leafimgs and num_leaves remain.
-clear leaf dirpath leaves num_leaves sp species;
+clear leaf dirpath leaves num_leaves sp species filenum tempcell;
 
 #clean dataset - ensure all imgs have the same size, and decrease size of data
 newsize = [30,40];
