@@ -9,10 +9,15 @@ pkg load image
 
 #Constants
 dirpath = 'leafsnap-dataset/dataset/images/field';
-num_sp = 10;
+num_sp = 100;
 
 #Load leaf paths
-species = readdir(dirpath)(3:end);
+tempcell = readdir(dirpath)(3:end);
+for filenum = 1:length(tempcell)
+  if isdir(strcat(dirpath,'/',tempcell{filenum}))
+    species{end+1} = tempcell{filenum};
+  endif
+endfor
 leaves = cell(num_sp,1);
 num_leaves = zeros(num_sp,1);
 leaf_ind = zeros(num_sp,1);
@@ -26,7 +31,8 @@ for sp = 1:num_sp
   endfor
   num_leaves(sp) = length(leaves{sp});
   leaf_ind(sp:end) += num_leaves(sp);
-  fprintf('\rSpecies loaded: %d', sp); 
+  fprintf('\rSpecies loaded: %d', sp);
+  fflush(1); 
 endfor
 
 leaf_ind = [0;leaf_ind];
@@ -42,9 +48,11 @@ for leaf = 1:tot_leaves
     sp += 1;
   endif
   #load leaf image
-  fprintf('\rLoading leaf image %d from species %d', leaf,sp)
+  fprintf('\rLoading leaf image %d from species %d', leaf,sp);
+  fflush(1);
   leafimgs{leaf} = imread(strcat(dirpath,'/',species{sp},'/',leaves{sp}{leaf-leaf_ind(sp)}));
 endfor
+fprintf('\n');
 
 #clear unused variables. Only leafimgs and num_leaves remain.
 clear leaf dirpath leaves num_leaves sp species filenum tempcell;
@@ -52,11 +60,14 @@ clear leaf dirpath leaves num_leaves sp species filenum tempcell;
 #clean dataset - ensure all imgs have the same size, and decrease size of data
 newsize = [30,40];
 for k = 1:tot_leaves
+  fprintf('\rProcessing leaf %d',k);
+  fflush(1);
   if size(leafimgs{k})(1) > size(leafimgs{k})(2)
     leafimgs{k} = permute(leafimgs{k},[2,1,3]);
   endif
   leafimgs{k} = imresize(leafimgs{k}, newsize);
 endfor
+fprintf('\n');
 
 #unroll into X
 X = zeros(tot_leaves, 3600);
