@@ -47,7 +47,7 @@
 \DeclareMathOperator{\Tor}{Tor}
 \DeclareMathOperator{\Ext}{Ext}
 \DeclareMathOperator{\Coker}{Coker}
-\DeclareMathOperator{\Log}{Log}
+\DeclareMathOperator{\Log}{log}
 
 \newcommand{\onto}{\twoheadrightarrow}
 \newcommand{\mono}{\rightarrowtail}
@@ -111,14 +111,14 @@ This is a work in progress, as apparent by the empty sections below.
  \item Other data repositories
 \end{itemize}
 
-\section{First Approach} I begin by using the easiest possible approach to get results for comparison with later attempts. The first approach attempts to classify pictures of leaves from two species: \textit{Abies Concolor} and \textit{Abies Nordmanniana} using logistic regression. 
+\section{First Approach: Logistic Regression on Two Species} I begin by using the easiest possible approach to get results for comparison with later attempts. The first approach attempts to classify pictures of leaves from two species: \textit{Abies Concolor} and \textit{Abies Nordmanniana} using logistic regression. 
 
 \subsection{Data} There were a total of 86 sample pictures of these leaves taken from the Leafsnap database \cite{leafsnap}. There were 51 for \textit{Abies Concolor} and 35 for \textit{Abies Nordmanniana} (See Figure \ref{fig:exphotos} for examples). They were color jpg photos.
 
 \subsection{Preprocessing} The Octave script '{\octfont loadDataScript.m}' loads and preprocesses the images. Images were all approximately $600 \times 800$ pixels ($\pm 3$ pixels per dimension) when rotated such that the first dimension was shorter than the second. Because this would result in a very large feature vector, the size was reduced to $30 \times 40$ pixels for all images via the Octave command '{\octfont imresize}' from the '{\octfont image}' package. The $86$ resulting $30 \times 40 \times 3$ matrices were unrolled into a $86 \times 3600$ whose rows were randomly permutedm the data was normalized, and then divided into matrices of training data ({\octfont X}), cross-validation data ({\octfont X\_cv}) and test data ({\octfont X\_test}). These are labelled with corresponding vectors {\octfont y, y\_cv} and {\octfont y\_test}. The label {\octfont 0} corresponds to \textit{Abies Concolor} and {\octfont 1} to \textit{Abies Nordmanniana}.
 
 \begin{figure} \label{fig:exphotos}
-\includegraphics[scale=0.3]{C:/Users/Geoffrey/Google Drive/Machine Learning/Leaf project/abies_concolor_ex.jpg} \includegraphics[scale=0.3]{C:/Users/Geoffrey/Google Drive/Machine Learning/Leaf project/abies_nordmaniana_ex}
+\includegraphics[scale=0.3]{C:/Users/Geoffrey/Documents/GitHub/MLproject/abies_concolor_ex.jpg} \includegraphics[scale=0.3]{C:/Users/Geoffrey/Documents/GitHub/MLproject/abies_nordmaniana_ex}
 \caption{Example photos of Abies Concolor (left) and Abies Nordmanniana (right).}
 \end{figure}
 
@@ -130,13 +130,13 @@ h_\theta(x) = \frac{1}{1+e^{x \cdot \theta}}
 
 Where $x$ is a feature vector and $\theta$ is a vector of the  model parameters.
 
-The cost function is given by
+The objective function is given by cross-entropy
 \[
  J(\theta) = -\frac{1}{m}\sum_{i = 1}^m (y_i\Log(h_\theta(x_i))+(1-y_i)\Log(1-h_\theta(x_i)) + \frac{\lambda}{2m} \sum_{k=1}^n \theta_k^2
 \]
 where $y_i$ is the label and $x_i$ is the feature vector of the $i$th sample.
 
-\subsection{Training} The model parameters were trained by minimizing the cost function using the Octave '{\octfont fminunc}' function, with theta initialized as the $0$ vector.
+\subsection{Training} The model parameters were trained by minimizing cross-entropy using the Octave '{\octfont fminunc}' function, with theta initialized as the $0$ vector.
 
 \subsection{Evaluation of results} The table below shows cost results for the model trained for various choices of the regularization parameter $\lambda$ (after training, cost was tested with $\lambda = 0$).
 
@@ -151,18 +151,28 @@ where $y_i$ is the label and $x_i$ is the feature vector of the $i$th sample.
 \end{tabular}
 \end{center}
 
-The pre-training cost was $0.69315$ on both the training set and the cross-validation set. If we predict \textit{Abies Concolor} when our hypothesis function gives a result $<0.5$, this gives a 100\% accuracy on the cross-validation set for all choices of $\lambda$.
+The pre-training cost was $0.69315$ on both the training set and the cross-validation set. If we predict \textit{Abies Concolor} when our hypothesis function gives a result $<0.5$, this gives a 100\% accuracy on the cross-validation set for all choices of $\lambda$. Figure \ref{fig:thetaZeroinitLogR} shows a visual representation of the model parameters (without the bias) when trained with $\lambda = 0$. 
+
+The 100 \% accuracy clearly shows that the data is linearly separable, even with the large loss of information due to preprocessing. Because this simple model easily solves this problem, we must make the problem more difficult by including more species so that this can be a valid basis for comparison.
+
+\begin{figure} \label{fig:thetaZeroinitLogR}
+\begin{center} 
+ \includegraphics[scale=8]{C:/Users/Geoffrey/Documents/GitHub/MLproject/theta_im_zeroinit.png}
+\end{center}
+\caption{Visual representation of the trained parameters of the logistic regression model.}
+\end{figure}
+
+\subsection{Random Initialization} Using a random mean $0$, variance $1$ Gaussian initialization with $\lambda = 0$, we get an even lower cross-entropy of 1.4391e-006 on the cross-validation set. Figure \ref{fig:thetaRandinitLogR} shows that the model parameters train to radically different values in this case.
+
+\begin{figure}
+\label{fig:thetaRandinitLogR}
+\begin{center}
+ \includegraphics[scale=8]{C:/Users/Geoffrey/Documents/GitHub/MLproject/theta_im_randinit.png}
+\end{center}
+\caption{Visual representation of the trained parameters of the logistic regression model with random initialization.}
+\end{figure}
 
 
-\section{Data Gathering}
-
-\section{Preprocessing}
-
-\section{Models}
-
-\section{Training Methods}
-
-\section{Evaluation of Results}
 
 \begin{thebibliography}{99}
 \bibitem{leafsnap} Neeraj Kumar, Peter N. Belhumeur, Arijit Biswas, David W. Jacobs, W. John Kress, Ida Lopez, Jo\~{a}o V. B. Soares, "Leafsnap: A Computer Vision System for Automatic Plant Species Identification," Proceedings of the 12th European Conference on Computer Vision (ECCV), October 2012.
