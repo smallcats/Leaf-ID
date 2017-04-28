@@ -16,7 +16,8 @@ function theta = train1vAll(init_theta, lambda, X, y, num_classes)
   Y = destructure(y,num_classes);
   for model_num = 1:num_classes
     theta(:,model_num) = lrTrain(X, Y(:,model_num), lambda, init_theta);
-    fprintf('\rTrained %d models',model_num)
+    fprintf('\rTrained %d models',model_num);
+    fflush(1);
   endfor
   fprintf('\n');
 end
