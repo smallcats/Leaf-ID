@@ -69,7 +69,7 @@
 \newtheorem{definition}{Definition}
 
 \title{Identifying Tree Species via Photographs of Leaves}
-\date{9 April 2017}
+\date{\today}
 \author{Geoffrey E. Schneider}
 
 \begin{document}
@@ -79,47 +79,47 @@
 
 This is a work in progress, as apparent by the empty sections below.
 
-\section{Plans} \label{sec:plans}
-\underline{Quick and dirty approach:}
-\begin{enumerate}
- \item Gather a small amount of data (1 or 2 species, ~100 examples)
- \item Put data in a standard, usable form (minimal cleaning)
- \item Implement simple logistic regression
- \item Evaluate accuracy and ways to improve via learning curves and accuracy metric.
- \item Ceiling analysis (if appropriate).
-\end{enumerate}
+%\section{Plans} \label{sec:plans}
+%\underline{Quick and dirty approach:}
+%\begin{enumerate}
+% \item Gather a small amount of data (1 or 2 species, ~100 examples)
+% \item Put data in a standard, usable form (minimal cleaning)
+% \item Implement simple logistic regression
+% \item Evaluate accuracy and ways to improve via learning curves and accuracy metric.
+% \item Ceiling analysis (if appropriate).
+%\end{enumerate}
+%
+%\noindent \underline{Additional models to try:}
+%\begin{itemize}
+% \item Perceptron
+% \item CNN
+% \item SVM  
+%\end{itemize}
+%
+%\noindent \underline{Data cleaning:}
+%\begin{itemize}
+% \item PCA
+% \item Autoencoder
+% \item Background removal
+% \item Feature choosing?
+%\end{itemize}
+%
+%\noindent \underline{Additional data gathering:}
+%\begin{itemize}
+% \item Manual data gathering
+% \item Artificial data
+% \item Other data repositories
+%\end{itemize}
 
-\noindent \underline{Additional models to try:}
-\begin{itemize}
- \item Perceptron
- \item CNN
- \item SVM  
-\end{itemize}
+\section{First Approach: Logistic Regression on Two Species} I begin by using the easiest possible approach to get results for comparison with later attempts. The first approach attempts to classify pictures of leaves from two species: \textit{abies concolor} and \textit{abies nordmanniana} using logistic regression. 
 
-\noindent \underline{Data cleaning:}
-\begin{itemize}
- \item PCA
- \item Autoencoder
- \item Background removal
- \item Feature choosing?
-\end{itemize}
+\subsection{Data} There were a total of 86 sample pictures of these leaves taken from the Leafsnap database \cite{leafsnap}. There were 51 for \textit{abies concolor} and 35 for \textit{abies nordmanniana} (See Figure \ref{fig:exphotos} for examples). They were color jpg photos.
 
-\noindent \underline{Additional data gathering:}
-\begin{itemize}
- \item Manual data gathering
- \item Artificial data
- \item Other data repositories
-\end{itemize}
+\subsection{Preprocessing} The Octave script '{\octfont loadDataScript.m}' loads and preprocesses the images. Images were all approximately $600 \times 800$ pixels ($\pm 3$ pixels per dimension) when rotated such that the first dimension was shorter than the second. Because this would result in a very large feature vector, the size was reduced to $30 \times 40$ pixels for all images via the Octave command '{\octfont imresize}' from the '{\octfont image}' package. The $86$ resulting $30 \times 40 \times 3$ matrices were unrolled into a $86 \times 3600$ whose rows were randomly permutedm the data was normalized, and then divided into matrices of training data ({\octfont X}), cross-validation data ({\octfont X\_cv}) and test data ({\octfont X\_test}). These are labelled with corresponding vectors {\octfont y, y\_cv} and {\octfont y\_test}. The label {\octfont 0} corresponds to \textit{abies concolor} and {\octfont 1} to \textit{abies nordmanniana}.
 
-\section{First Approach: Logistic Regression on Two Species} I begin by using the easiest possible approach to get results for comparison with later attempts. The first approach attempts to classify pictures of leaves from two species: \textit{Abies Concolor} and \textit{Abies Nordmanniana} using logistic regression. 
-
-\subsection{Data} There were a total of 86 sample pictures of these leaves taken from the Leafsnap database \cite{leafsnap}. There were 51 for \textit{Abies Concolor} and 35 for \textit{Abies Nordmanniana} (See Figure \ref{fig:exphotos} for examples). They were color jpg photos.
-
-\subsection{Preprocessing} The Octave script '{\octfont loadDataScript.m}' loads and preprocesses the images. Images were all approximately $600 \times 800$ pixels ($\pm 3$ pixels per dimension) when rotated such that the first dimension was shorter than the second. Because this would result in a very large feature vector, the size was reduced to $30 \times 40$ pixels for all images via the Octave command '{\octfont imresize}' from the '{\octfont image}' package. The $86$ resulting $30 \times 40 \times 3$ matrices were unrolled into a $86 \times 3600$ whose rows were randomly permutedm the data was normalized, and then divided into matrices of training data ({\octfont X}), cross-validation data ({\octfont X\_cv}) and test data ({\octfont X\_test}). These are labelled with corresponding vectors {\octfont y, y\_cv} and {\octfont y\_test}. The label {\octfont 0} corresponds to \textit{Abies Concolor} and {\octfont 1} to \textit{Abies Nordmanniana}.
-
-\begin{figure} \label{fig:exphotos}
+\begin{figure}
 \includegraphics[scale=0.3]{C:/Users/Geoffrey/Documents/GitHub/MLproject/abies_concolor_ex.jpg} \includegraphics[scale=0.3]{C:/Users/Geoffrey/Documents/GitHub/MLproject/abies_nordmaniana_ex}
-\caption{Example photos of Abies Concolor (left) and Abies Nordmanniana (right).}
+\caption{\label{fig:exphotos} Example photos of \textit{abies concolor} (left) and \textit{abies nordmanniana} (right).}
 \end{figure}
 
 \subsection{Model} The model trained was a logistic regression model with regularization. The hypothesis for a particular example is given by:
@@ -151,7 +151,7 @@ where $y_i$ is the label and $x_i$ is the feature vector of the $i$th sample.
 \end{tabular}
 \end{center}
 
-The pre-training cost was $0.69315$ on both the training set and the cross-validation set. If we predict \textit{Abies Concolor} when our hypothesis function gives a result $<0.5$, this gives a 100\% accuracy on the cross-validation set for all choices of $\lambda$. Figure \ref{fig:thetaZeroinitLogR} shows a visual representation of the model parameters (without the bias) when trained with $\lambda = 0$. 
+The pre-training cost was $0.69315$ on both the training set and the cross-validation set. If we predict \textit{abies concolor} when our hypothesis function gives a result $<0.5$, this gives a 100\% accuracy on the cross-validation set for all choices of $\lambda$. Figure \ref{fig:thetaZeroinitLogR} shows a visual representation of the model parameters (without the bias) when trained with $\lambda = 0$. 
 
 The 100 \% accuracy clearly shows that the data is linearly separable, even with the large loss of information due to preprocessing. Because this simple model easily solves this problem, we must make the problem more difficult by including more species so that this can be a valid basis for comparison.
 
@@ -171,8 +171,23 @@ The 100 \% accuracy clearly shows that the data is linearly separable, even with
 \caption{\label{fig:thetaRandinitLogR} Visual representation of the trained parameters of the logistic regression model with random initialization.}
 \end{figure}
 
-\subsection{More Species}
+\subsection{More Species} To get a better basis for comparison, the logistic regression model was additionally trained to distinguish 10 and 100 species. A few examples of these species are shown in Figure \ref{fig:exphotosmulti}. This was done by training 10 and 100 logistic regression models respectively, each distinguishing one species from any of the others. Because there were no overfitting issues in the 2 species problem, the regularization parameter was set to $0$, and no other such parameters were considered (this was also done for time considerations). The results are shown below, reported as percent accuracy on the cross-validation set. Random initialization was Gaussian with mean $0$ and variance $0.01$.
 
+\begin{center}
+\begin{tabular}{|l|c|c|c|}
+ \hline
+ \# species : & 2 & 10 & 100\\
+ \hline
+ Zero initialization : & 100\% & 81.8\% & 49.6\%\\
+ Random initialization: & 100\% & 84.1\% & 48.8\%\\
+ \hline
+\end{tabular}
+\end{center}
+
+\begin{figure}
+\includegraphics[scale=0.3]{C:/Users/Geoffrey/Documents/GitHub/MLproject/acer_palmatum_ex.jpg} \includegraphics[scale=0.3]{C:/Users/Geoffrey/Documents/GitHub/MLproject/acer_pseudoplatanus_ex} \\ \includegraphics[scale=0.3]{C:/Users/Geoffrey/Documents/GitHub/MLproject/betula_nigra_ex.jpg} \includegraphics[scale=0.3]{C:/Users/Geoffrey/Documents/GitHub/MLproject/crataegus_viridis_ex}
+\caption{\label{fig:exphotosmulti} Example photos of \textit{acer palmatum} (upper left), \textit{acer pseudoplatanus} (upper right), \textit{betula nigra} (bottom left) and \textit{crataegus viridis} (bottom right). The two species on top are included in the models trained on 10 species and all four are incluced in the models trained on 100 species.}
+\end{figure}
 
 \begin{thebibliography}{99}
 \bibitem{leafsnap} Neeraj Kumar, Peter N. Belhumeur, Arijit Biswas, David W. Jacobs, W. John Kress, Ida Lopez, Jo\~{a}o V. B. Soares, "Leafsnap: A Computer Vision System for Automatic Plant Species Identification," Proceedings of the 12th European Conference on Computer Vision (ECCV), October 2012.
@@ -180,4 +195,3 @@ The 100 \% accuracy clearly shows that the data is linearly separable, even with
 
 
 \end{document}
-
