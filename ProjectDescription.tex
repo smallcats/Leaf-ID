@@ -155,23 +155,23 @@ The pre-training cost was $0.69315$ on both the training set and the cross-valid
 
 The 100 \% accuracy clearly shows that the data is linearly separable, even with the large loss of information due to preprocessing. Because this simple model easily solves this problem, we must make the problem more difficult by including more species so that this can be a valid basis for comparison.
 
-\begin{figure} \label{fig:thetaZeroinitLogR}
+\begin{figure}
 \begin{center} 
  \includegraphics[scale=8]{C:/Users/Geoffrey/Documents/GitHub/MLproject/theta_im_zeroinit.png}
 \end{center}
-\caption{Visual representation of the trained parameters of the logistic regression model.}
+\caption{\label{fig:thetaZeroinitLogR} Visual representation of the trained parameters of the logistic regression model.}
 \end{figure}
 
 \subsection{Random Initialization} Using a random mean $0$, variance $1$ Gaussian initialization with $\lambda = 0$, we get an even lower cross-entropy of 1.4391e-006 on the cross-validation set. Figure \ref{fig:thetaRandinitLogR} shows that the model parameters train to radically different values in this case.
 
 \begin{figure}
-\label{fig:thetaRandinitLogR}
 \begin{center}
  \includegraphics[scale=8]{C:/Users/Geoffrey/Documents/GitHub/MLproject/theta_im_randinit.png}
-\end{center}
-\caption{Visual representation of the trained parameters of the logistic regression model with random initialization.}
+\end{center} 
+\caption{\label{fig:thetaRandinitLogR} Visual representation of the trained parameters of the logistic regression model with random initialization.}
 \end{figure}
 
+\subsection{More Species}
 
 
 \begin{thebibliography}{99}
