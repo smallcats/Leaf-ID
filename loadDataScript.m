@@ -94,7 +94,7 @@ end
 #Normalize
 function Xnorm = normalize(X)
   Xnorm = X/(max(max(X))/2);
-  Xnorm = X - mean(mean(X));
+  Xnorm = Xnorm - mean(mean(Xnorm));
 end
   
 #step = int8(tot_leaves/9);
@@ -117,3 +117,15 @@ function [Xtrain, ytrain, Xcv, ycv, Xtest,ytest] = sampleSets(X,step,leaf_ind,to
   ytest = y(step+1:2*step);
   ytrain = y(2*step+1:end);
 end
+
+dirpath = 'leafsnap-dataset/dataset/images/field';
+num_sp = 10;
+newsize = [30,40];
+[species,leaves,leaf_ind,tot_leaves] = load_leaf_paths(dirpath, num_sp);
+[leafimgs] = load_images(species,leaves,leaf_ind,tot_leaves,dirpath);
+[cleafimgs] = clean_img_data(leafimgs,tot_leaves,newsize);
+X = unroll(cleafimgs, tot_leaves);
+Xnorm = normalize(X);
+step = int16(tot_leaves/9);
+[Xtrain, ytrain, Xcv, ycv, Xtest,ytest] = sampleSets(Xnorm,step,leaf_ind,tot_leaves,num_sp);
+clear dirpath num_sp newsize species leaves leaf_ind tot_leaves leafimgs cleafimgs X Xnorm step;
