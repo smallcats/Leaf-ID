@@ -155,6 +155,8 @@ The pre-training cost was $0.69315$ on both the training set and the cross-valid
 
 The 100 \% accuracy clearly shows that the data is linearly separable, even with the large loss of information due to preprocessing. Because this simple model easily solves this problem, we must make the problem more difficult by including more species so that this can be a valid basis for comparison.
 
+The algorithm was also tested on lab images from the leafsnap dataset in order to ensure that the result was not obtained due to systematic differences (e.g. lighting differences) between photos of the two species. The same 100 \% accuracy held in this case.
+
 \begin{figure}
 \begin{center} 
  \includegraphics[scale=8]{C:/Users/Geoffrey/Documents/GitHub/MLproject/theta_im_zeroinit.png}
@@ -188,6 +190,8 @@ The 100 \% accuracy clearly shows that the data is linearly separable, even with
 \includegraphics[scale=0.3]{C:/Users/Geoffrey/Documents/GitHub/MLproject/acer_palmatum_ex.jpg} \includegraphics[scale=0.3]{C:/Users/Geoffrey/Documents/GitHub/MLproject/acer_pseudoplatanus_ex} \\ \includegraphics[scale=0.3]{C:/Users/Geoffrey/Documents/GitHub/MLproject/betula_nigra_ex.jpg} \includegraphics[scale=0.3]{C:/Users/Geoffrey/Documents/GitHub/MLproject/crataegus_viridis_ex}
 \caption{\label{fig:exphotosmulti} Example photos of \textit{acer palmatum} (upper left), \textit{acer pseudoplatanus} (upper right), \textit{betula nigra} (bottom left) and \textit{crataegus viridis} (bottom right). The two species on top are included in the models trained on 10 species and all four are incluced in the models trained on 100 species.}
 \end{figure}
+
+As before, the algorithm was also tested on the lab dataset (for 10 species) and an even stronger result (94.6 \% accuracy) was obtained.
 
 \begin{thebibliography}{99}
 \bibitem{leafsnap} Neeraj Kumar, Peter N. Belhumeur, Arijit Biswas, David W. Jacobs, W. John Kress, Ida Lopez, Jo\~{a}o V. B. Soares, "Leafsnap: A Computer Vision System for Automatic Plant Species Identification," Proceedings of the 12th European Conference on Computer Vision (ECCV), October 2012.
