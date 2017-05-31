@@ -193,8 +193,26 @@ The algorithm was also tested on lab images from the leafsnap dataset in order t
 
 As before, the algorithm was also tested on the lab dataset (for 10 species) and an even stronger result (94.6 \% accuracy) was obtained.
 
+\section{Implementing NetMorph}
+
+NetMorph \cite{NetMorph} is an algorithm that takes a neural net and factors layers to obtain a deeper net (with activations that require training) that initially gives the same (or very similar) outputs to the original net. This allows us to use what previously trained models "know" to train new models. This part of the project was implemented in TensorFlow with the Python API.
+
+\begin{figure}
+\includegraphics[scale=1]{C:/Users/Geoffrey/Documents/GitHub/MLproject/Figure_adam_lr01.png}
+\caption{Learning for 200 iterations with the Adam Optimizer \cite{AdamOpt}. Factoring a 2x2 matrix of 3x3 filters into two 2x2 matrices of 2x2 filters.}
+\end{figure}
+
+\begin{figure}
+\includegraphics[scale=1]{C:/Users/Geoffrey/Documents/GitHub/MLproject/Figure_adam_200up.png}
+\caption{Learning iterations 200 to 5000 with the Adam Optimizer.}
+\end{figure}
+
 \begin{thebibliography}{99}
 \bibitem{leafsnap} Neeraj Kumar, Peter N. Belhumeur, Arijit Biswas, David W. Jacobs, W. John Kress, Ida Lopez, Jo\~{a}o V. B. Soares, "Leafsnap: A Computer Vision System for Automatic Plant Species Identification," Proceedings of the 12th European Conference on Computer Vision (ECCV), October 2012.
+
+\bibitem{AdamOpt}
+
+\bibitem{NetMorph}
 \end{thebibliography}
 
 
