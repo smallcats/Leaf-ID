@@ -29,25 +29,25 @@ def addFullLayer(inlayer, outdim, nonlinearity, initialization=np.random.standar
     else: L = tf.matmul(inlayer,W)+b
     return W,b,g,L
 
-def buildCore(inlayer, layersizes, nonlinearity, initialization=np.random.standard_normal):
+def buildCore(inlayer, layers, nonlinearity, initialization=np.random.standard_normal):
     """
     Builds TensorFlow operations for the layers of an autoencoder. No input, training, saving, etc.
     args: inlayer - a 2D tensor which will serve as the input layer. Typically the shape is [batch, features].
     """
-    W,b,g,L = addFullLayer(inlayer, layersizes[0], nonlinearity, initialization, '0')
+    W,b,g,L = addFullLayer(inlayer, layers[0], nonlinearity, initialization, '0')
     Ws = [W]
     bs = [b]
     gs = [g]
     Ls = [L]
     k = 1
-    for l in layersizes[1:]:
+    for l in layers[1:]:
         W,b,g,L = addFullLayer(Ls[-1],l,nonlinearity,initialization,str(k))
         Ws.append(W)
         bs.append(b)
         gs.append(g)
         Ls.append(L)
         k += 1
-    for l in layersizes[-2::-1]:
+    for l in layers[-2::-1]:
         W,b,g,L = addFullLayer(Ls[-1],l,nonlinearity,initialization,str(k))
         Ws.append(W)
         bs.append(b)
@@ -59,6 +59,30 @@ def buildCore(inlayer, layersizes, nonlinearity, initialization=np.random.standa
     bs.append(b)
     gs.append(g)
     Ls.append(L)
+    return Ws, bs, gs, Ls
+
+def buildCoreEnc(inlayer, layers, nonlinearity, initialization=np.random.standard_normal):
+    """
+    Builds a Tensorflow graph for the layers of the encoding portion of an autoencoder.
+
+    args: inlayer: a tensor input layer
+          layers: a list of sizes of encoding layers
+          nonlinearity: the activation function
+          initialization: a function for initialization, should take a tuple for its size argument
+    """
+    W,b,g,L = addFullLayer(inlayer, layers[0], nonlinearity, initialization, '0')
+    Ws = [W]
+    bs = [b]
+    gs = [g]
+    Ls = [L]
+    k = 1
+    for l in layers[1:]:
+        W,b,g,L = addFullLayer(Ls[-1],l,nonlinearity,initialization,str(k))
+        Ws.append(W)
+        bs.append(b)
+        gs.append(g)
+        Ls.append(L)
+        k += 1
     return Ws, bs, gs, Ls
 
 def buildTraining(filenames, layers=[1000,100], nonlinearity=tf.nn.sigmoid, optimize=tf.train.GradientDescentOptimizer(0.1), lossfunc=tf.losses.mean_squared_error):
@@ -173,7 +197,7 @@ def buildEncDecInference(filenames, layers=[1000,100], nonlinearity=tf.nn.sigmoi
     
     return outimg, loss, init, restorer, coord, numfiles
 
-def runEncDecInference(outimg, loss, restorer, init, coord, numfiles, name='model'):
+def runEncDecInference(outimg, loss, init, restorer, coord, numfiles, name='model'):
     """
     Runs an encode-decode inference graph for an autoencoder trained on 90x60 pixel images.
 
@@ -200,9 +224,69 @@ def runEncDecInference(outimg, loss, restorer, init, coord, numfiles, name='mode
         npoutimgs.append(npoutimg)
         print('.',sep='',end='')
 
+    tf.reset_default_graph()
     return npoutimgs, losses
     
+def buildEncInference(filenames, layers=[1000,100], nonlinearity=tf.nn.sigmoid):
+    """
+    Builds a TensorFlow graph for encode inference for an autoencoder trained on 90x60 pixel images.
+
+    args: filenames: the names of files on which inference will be run
+          layers: the encode layers of the autoencoder (after the input layer)
+          nonlinearity: the activation function
+
+    returns: outlayer: the output layer tensor
+             init: initializer node
+             restorer: Saver node for restoring model
+             coord: coordinator node
+             numfiles: the number of files to be encoded
+    """
+    #getting leaves
+    numfiles = len(filenames)
+    imagequeue = tf.train.string_input_producer(filenames, shuffle=False)
+    reader = tf.WholeFileReader()
+    _, imgstr = reader.read(imagequeue)
+    imgtensor = tf.image.decode_png(imgstr)
+    gin = tf.Variable(0, dtype=tf.float32, name='gin')
+    Lin = tf.cast(tf.reshape(imgtensor, [-1, 60*90*3]), tf.float32)*(gin/300)
+    coord = tf.train.Coordinator()
+
+    #build layers
+    Ws, bs, gs, Ls = buildCoreEnc(Lin, layers, nonlinearity, initialization = np.zeros)
+
+    #for initialization
+    init = tf.global_variables_initializer()
+    restorer = tf.train.Saver()
     
+    return Ls[-1], init, restorer, coord, numfiles
+
+def runEncInference(outlayer, init, restorer, coord, numfiles, name='model'):
+    """
+    Runs an encoding graph from an autoencoder trained on 90x60 pixel images.
+
+    args: outlayer: the output layer
+          init: initialization node
+          restorer: Saver node for restoring
+          coord: coordinator
+          numfiles: number of files loaded into the queue in the graph
+          name: name under which the model is saved
+
+    returns: encimgs: a list containing the encoded images (as a numpy float32 array)
+    """
+    sess = tf.Session()
+    threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+    sess.run(init)
+    restorer.restore(sess, '.\\Models\\'+name+'.ckpt')
+
+    encimgs = []
+    for step in range(numfiles):
+        encimg = sess.run(outlayer)
+        encimgs.append(encimg)
+
+    sess.close()
+    tf.reset_default_graph()
+    return encimgs
+
 ##inimg = im.fromarray(image, 'RGB')
 ##outimg = im.fromarray(np.uint8(np.rint(recons_image)), 'RGB')
 ##
