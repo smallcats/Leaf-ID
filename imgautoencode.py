@@ -2,18 +2,37 @@ import numpy as np
 import tensorflow as tf
 from os import chdir as cd
 from os import listdir as ls
+from os.path import isdir
 from matplotlib import pyplot as plt
 from PIL import Image as im
 
 cd('C:\\Users\\Geoffrey\\Documents\\GitHub\\MLproject')
 
-def getfilenames(path):
+#-------------------------------------getting filenames-------------------------------------
+
+def lspath(path):
+    """
+    lists the files in a directory, with path relative to current directory
+
+    args: path: the relative path to a directory
+    """
     filenames = []
     for name in ls(path):
         filenames.append(path+'\\'+name)
     return filenames
 
-filenames = getfilenames('.\\PreprocessedLeaves')
+def getfilenames(path):
+    filequeue = lspath(path)
+    filenames = []
+    while filequeue != []:
+        filename = filequeue.pop()
+        if isdir(filename): filequeue.extend(lspath(filename))
+        elif filename[-4:] == '.png': filenames.append(filename)
+    return filenames
+
+filenames = getfilenames('.\\PreprocessedLeaves\\leafsnap-lab')
+
+#-------------------------------------activation-------------------------------------
 
 def selu(x):
     a10 = 1.6733
@@ -22,20 +41,18 @@ def selu(x):
     center = (l10 + a10*l10)/2
     return tf.nn.elu(x)*(halfgap*tf.sign(x)+center)
 
+#-------------------------------------nn graph builders-------------------------------------
+
 def addFullLayer(inlayer, outdim, nonlinearity, initialization=np.random.standard_normal, identifier='', final = False):
     """
     Adds a fully connected layer. Inlayer is a tensor of shape [batchsize, layersize]
     """
     Winit = (1/int(inlayer.shape[1]))*initialization((int(inlayer.shape[1]),outdim))
     binit = 0.1*initialization(outdim)
-    #ginit = np.random.uniform()
     W = tf.Variable(Winit, dtype=tf.float32, name='W'+identifier)
     b = tf.Variable(binit, dtype=tf.float32, name='b'+identifier)
-    #g = tf.Variable(ginit, dtype=tf.float32)
-    #if final == False: L = nonlinearity(g*(tf.matmul(inlayer,W)+b))
     if final == False: L = nonlinearity(tf.matmul(inlayer,W)+b)
-    else: L = 255*tf.sigmoid(tf.matmul(inlayer,W)+b)
-    #return W,b,g,L
+    else: L = 255*tf.sigmoid(1.6*tf.matmul(inlayer,W)+b)
     return W,b,L
 
 def buildCore(inlayer, layers, nonlinearity, initialization=np.random.standard_normal):
@@ -44,35 +61,26 @@ def buildCore(inlayer, layers, nonlinearity, initialization=np.random.standard_n
     args: inlayer - a 2D tensor which will serve as the input layer. Typically the shape is [batch, features].
     """
     W,b,L = addFullLayer(inlayer, layers[0], nonlinearity, initialization, '0')
-    #W,b,g,L = addFullLayer(inlayer, layers[0], nonlinearity, initialization, '0')
     Ws = [W]
     bs = [b]
-    #gs = [g]
     Ls = [L]
     k = 1
     for l in layers[1:]:
-        #W,b,g,L = addFullLayer(Ls[-1],l,nonlinearity,initialization,str(k))
         W,b,L = addFullLayer(Ls[-1],l,nonlinearity,initialization,str(k))
         Ws.append(W)
         bs.append(b)
-        #gs.append(g)
         Ls.append(L)
         k += 1
     for l in layers[-2::-1]:
-        #W,b,g,L = addFullLayer(Ls[-1],l,nonlinearity,initialization,str(k))
         W,b,L = addFullLayer(Ls[-1],l,nonlinearity,initialization,str(k))
         Ws.append(W)
         bs.append(b)
-        #gs.append(g)
         Ls.append(L)
         k += 1
-    #W,b,g,L = addFullLayer(Ls[-1],inlayer.shape[1], nonlinearity, initialization, str(k), final=True)
     W,b,L = addFullLayer(Ls[-1],inlayer.shape[1], nonlinearity, initialization, str(k), final=True)
     Ws.append(W)
     bs.append(b)
-    #gs.append(g)
     Ls.append(L)
-    #return Ws, bs, gs, Ls
     return Ws, bs, Ls
 
 def buildCoreEnc(inlayer, layers, nonlinearity, initialization=np.random.standard_normal):
@@ -84,23 +92,20 @@ def buildCoreEnc(inlayer, layers, nonlinearity, initialization=np.random.standar
           nonlinearity: the activation function
           initialization: a function for initialization, should take a tuple for its size argument
     """
-    #W,b,g,L = addFullLayer(inlayer, layers[0], nonlinearity, initialization, '0')
     W,b,L = addFullLayer(inlayer, layers[0], nonlinearity, initialization, '0')
     Ws = [W]
     bs = [b]
-    #gs = [g]
     Ls = [L]
     k = 1
     for l in layers[1:]:
-        #W,b,g,L = addFullLayer(Ls[-1],l,nonlinearity,initialization,str(k))
         W,b,L = addFullLayer(Ls[-1],l,nonlinearity,initialization,str(k))
         Ws.append(W)
         bs.append(b)
-        #gs.append(g)
         Ls.append(L)
         k += 1
-    #return Ws, bs, gs, Ls
     return Ws, bs, Ls
+
+#-------------------------------------training-------------------------------------
 
 def buildTraining(filenames, layers=[1000,100], nonlinearity=tf.nn.sigmoid, optimize=tf.train.GradientDescentOptimizer(0.1), lossfunc=tf.losses.mean_squared_error):
     """
@@ -112,27 +117,24 @@ def buildTraining(filenames, layers=[1000,100], nonlinearity=tf.nn.sigmoid, opti
              coord: the coordinator
              numfiles: the number of files in the training set
     """
-    #getting leaves
-    imagequeue = tf.train.string_input_producer(filenames, shuffle=True)
+    #getting training leaves
+    imagequeue = tf.train.string_input_producer(filenames)
     reader = tf.WholeFileReader()
-    _, imgstr = reader.read(imagequeue)
+    label, imgstr = reader.read(imagequeue)
     imgtensor = tf.image.decode_png(imgstr)
-    #gin = tf.Variable(np.random.rand(), dtype=tf.float32, name='gin')
-    #Lin = tf.cast(tf.reshape(imgtensor, [-1, 60*90*3]), tf.float32)*(gin/300)
-    Lin = tf.cast(tf.reshape(imgtensor, [-1, 60*90*3]), tf.float32)/300
+    reshape_img = tf.cast(tf.reshape(imgtensor, [60*90*3]), tf.float32)
+    img_batch, batch_lab = tf.train.shuffle_batch([reshape_img, label], batch_size = 20, capacity = 100, min_after_dequeue = 40)
 
     #build layers
-    #Ws, bs, gs, Ls = buildCore(Lin, layers, nonlinearity)
+    Lin = img_batch/255
     Ws, bs, Ls = buildCore(Lin, layers, nonlinearity)
-    outimg = tf.reshape(Ls[-1], (90,60,3))
 
     #training
-    loss = lossfunc(outimg, imgtensor)
+    loss = lossfunc(img_batch, Ls[-1])
     optimizer = optimize
     trainstep = optimizer.minimize(loss)
 
     #initialization and saving
-    #saver = tf.train.Saver({k.name:k for k in Ws+bs+gs}.update({gin.name:gin}))
     saver = tf.train.Saver()
     init = tf.global_variables_initializer()
     coord = tf.train.Coordinator()
@@ -145,7 +147,7 @@ def runTraining(trainstep, loss, init, saver, coord, name = 'model', numsteps=10
     Requires: imagename, trainstep, loss, coord, init, saver all with those names.
     
     args: name: a string for saving the model
-          numsteps: the number of steps of training
+          numsteps: the number of steps of training          
           trainstep
           loss
           init
@@ -155,9 +157,11 @@ def runTraining(trainstep, loss, init, saver, coord, name = 'model', numsteps=10
     returns: losses: a list of losses for each training step
     """
     sess = tf.Session()
-    threads = tf.train.start_queue_runners(coord=coord, sess=sess)
     sess.run(init)
+    threads = tf.train.start_queue_runners(coord=coord, sess=sess)
     losses = []
+    Lins = []
+    Louts = []
     if numsteps >= 100:
         for step in range(numsteps):
             _, lossstep = sess.run((trainstep,loss))
@@ -177,6 +181,8 @@ def runTraining(trainstep, loss, init, saver, coord, name = 'model', numsteps=10
     sess.close()
     tf.reset_default_graph()
     return losses
+
+#-------------------------------------encode-decode-------------------------------------
 
 def buildEncDecInference(filenames, layers=[1000,100], nonlinearity=tf.nn.sigmoid, lossfunc=tf.losses.mean_squared_error):
     """
@@ -200,13 +206,10 @@ def buildEncDecInference(filenames, layers=[1000,100], nonlinearity=tf.nn.sigmoi
     reader = tf.WholeFileReader()
     _, imgstr = reader.read(imagequeue)
     imgtensor = tf.image.decode_png(imgstr)
-    #gin = tf.Variable(0, dtype=tf.float32, name='gin')
-    #Lin = tf.cast(tf.reshape(imgtensor, [-1, 60*90*3]), tf.float32)*(gin/300)
-    Lin = tf.cast(tf.reshape(imgtensor, [-1, 60*90*3]), tf.float32)/300
+    Lin = tf.cast(tf.reshape(imgtensor, [-1, 60*90*3]), tf.float32)/255
     coord = tf.train.Coordinator()
 
     #build layers
-    #Ws, bs, gs, Ls = buildCore(Lin, layers, nonlinearity, initialization = np.zeros)
     Ws, bs, Ls = buildCore(Lin, layers, nonlinearity, initialization = np.zeros)
     outimg = tf.reshape(Ls[-1], (90,60,3))
 
@@ -269,13 +272,10 @@ def buildEncInference(filenames, layers=[1000,100], nonlinearity=tf.nn.sigmoid):
     reader = tf.WholeFileReader()
     _, imgstr = reader.read(imagequeue)
     imgtensor = tf.image.decode_png(imgstr)
-    #gin = tf.Variable(0, dtype=tf.float32, name='gin')
-    #Lin = tf.cast(tf.reshape(imgtensor, [-1, 60*90*3]), tf.float32)*(gin/300)
     Lin = tf.cast(tf.reshape(imgtensor, [-1, 60*90*3]), tf.float32)/300
     coord = tf.train.Coordinator()
 
     #build layers
-    #Ws, bs, gs, Ls = buildCoreEnc(Lin, layers, nonlinearity, initialization = np.zeros)
     Ws, bs, Ls = buildCoreEnc(Lin, layers, nonlinearity, initialization = np.zeros)
 
     #for initialization
@@ -310,6 +310,8 @@ def runEncInference(outlayer, init, restorer, coord, numfiles, name='model'):
     sess.close()
     tf.reset_default_graph()
     return encimgs
+
+#-------------------------------------main-------------------------------------
 
 ##inimg = im.fromarray(image, 'RGB')
 ##outimg = im.fromarray(np.uint8(np.rint(recons_image)), 'RGB')
