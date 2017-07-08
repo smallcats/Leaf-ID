@@ -1,10 +1,14 @@
 import numpy as np
 import tensorflow as tf
+
 from os import chdir as cd
 from os import listdir as ls
 from os.path import isdir
+
 from matplotlib import pyplot as plt
 from PIL import Image as im
+
+from random import shuffle
 
 cd('C:\\Users\\Geoffrey\\Documents\\GitHub\\MLproject')
 
@@ -31,6 +35,7 @@ def getfilenames(path):
     return filenames
 
 filenames = getfilenames('.\\PreprocessedLeaves\\leafsnap-lab')
+shuffle(filenames)
 
 #-------------------------------------activation-------------------------------------
 
@@ -107,30 +112,46 @@ def buildCoreEnc(inlayer, layers, nonlinearity, initialization=np.random.standar
 
 #-------------------------------------training-------------------------------------
 
-def buildTraining(filenames, layers=[1000,100], nonlinearity=tf.nn.sigmoid, optimize=tf.train.GradientDescentOptimizer(0.1), lossfunc=tf.losses.mean_squared_error):
+def buildTraining(t_filenames, v_filenames, layers=[1000,100], nonlinearity=tf.nn.sigmoid, optimize=tf.train.GradientDescentOptimizer(0.1), lossfunc=tf.losses.mean_squared_error):
     """
     Builds a TensorFlow autoencoder graph for 90x60 images including training, saving, input, initialization, etc.
-    Returns: trainstep: the training step node
+
+    args: t_filenames, v_filenames, layers, nonlinearity, lossfunc
+    
+    returns: choice: a placeholder node for choosing whether to run on the training or validation set.
+             trainstep: the training step node
              loss: the loss node
              init: the initializer
              saver: the Saver node
              coord: the coordinator
              numfiles: the number of files in the training set
     """
-    #getting training leaves
-    imagequeue = tf.train.string_input_producer(filenames)
     reader = tf.WholeFileReader()
-    label, imgstr = reader.read(imagequeue)
-    imgtensor = tf.image.decode_png(imgstr)
-    reshape_img = tf.cast(tf.reshape(imgtensor, [60*90*3]), tf.float32)
-    img_batch, batch_lab = tf.train.shuffle_batch([reshape_img, label], batch_size = 20, capacity = 100, min_after_dequeue = 40)
+    
+    #getting training leaves
+    t_imagequeue = tf.train.string_input_producer(t_filenames)
+    t_label, t_imgstr = reader.read(t_imagequeue)
+    t_imgtensor = tf.image.decode_png(t_imgstr)
+    t_reshape_img = tf.cast(tf.reshape(t_imgtensor, [60*90*3]), tf.float32)
+    t_img_batch = tf.train.shuffle_batch([t_reshape_img], batch_size = 20, capacity = 100, min_after_dequeue = 40)
+
+    #getting validation leaves
+    v_imagequeue = tf.train.string_input_producer(v_filenames)
+    v_label, v_imgstr = reader.read(v_imagequeue)
+    v_imgtensor = tf.image.decode_png(v_imgstr)
+    v_reshape_img = tf.cast(tf.reshape(v_imgtensor, [60*90*3]), tf.float32)
+    v_img_batch = tf.train.shuffle_batch([v_reshape_img], batch_size = 50, capacity = 250, min_after_dequeue = 100)
+
+    #splitter - decide to run on training or validation set
+    choice = tf.placeholder(dtype=tf.bool) #True for training, False for validation
+    in_imgs = tf.cond(choice, lambda: t_img_batch, lambda: v_img_batch)
 
     #build layers
-    Lin = img_batch/255
+    Lin = in_imgs/255
     Ws, bs, Ls = buildCore(Lin, layers, nonlinearity)
 
     #training
-    loss = lossfunc(img_batch, Ls[-1])
+    loss = lossfunc(in_imgs, Ls[-1])
     optimizer = optimize
     trainstep = optimizer.minimize(loss)
 
@@ -139,38 +160,32 @@ def buildTraining(filenames, layers=[1000,100], nonlinearity=tf.nn.sigmoid, opti
     init = tf.global_variables_initializer()
     coord = tf.train.Coordinator()
 
-    return trainstep, loss, init, saver, coord
+    return choice, trainstep, loss, init, saver, coord
 
-def runTraining(trainstep, loss, init, saver, coord, name = 'model', numsteps=100):
+def runTraining(choice, trainstep, loss, init, saver, coord, name = 'model', numsteps=100, validation_steps=100):
     """
     Trains an autoencoder graph for numsteps steps, saving the resulting weights in a .ckpt file.
     Requires: imagename, trainstep, loss, coord, init, saver all with those names.
     
     args: name: a string for saving the model
-          numsteps: the number of steps of training          
-          trainstep
-          loss
-          init
-          saver
-          coord
+          numsteps: the number of steps of training
+          validation_steps: the number of training steps before validation
+          nodes from buildTraining graph - choice, trainstep, loss, init, saver, coord
           
-    returns: losses: a list of losses for each training step
+    returns: t_losses: a list of losses for each training step
+             v_losses: a list of losses for each validation
     """
     sess = tf.Session()
     sess.run(init)
     threads = tf.train.start_queue_runners(coord=coord, sess=sess)
-    losses = []
-    Lins = []
-    Louts = []
-    if numsteps >= 100:
-        for step in range(numsteps):
-            _, lossstep = sess.run((trainstep,loss))
-            losses.append(lossstep)
-            if step%(numsteps//100) == 0: print('.',sep='',end='')
-    else:
-        for step in range(numsteps):
-            _, lossstep = sess.run((trainstep,loss))
-            losses.append(lossstep)
+    t_losses = []
+    v_losses = []
+    for step in range(numsteps):
+        _, lossstep = sess.run((trainstep,loss), {choice: True})
+        t_losses.append(lossstep)
+        if (step+1)%(numsteps//validation_steps) == 0:
+            lossstep = sess.run(loss, {choice: False})
+            v_losses.append(lossstep)
             print('.',sep='',end='')
     print('\n')
     
@@ -180,7 +195,7 @@ def runTraining(trainstep, loss, init, saver, coord, name = 'model', numsteps=10
     coord.join(threads)
     sess.close()
     tf.reset_default_graph()
-    return losses
+    return t_losses, v_losses
 
 #-------------------------------------encode-decode-------------------------------------
 
