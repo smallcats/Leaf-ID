@@ -133,14 +133,14 @@ def buildTraining(t_filenames, v_filenames, layers=[1000,100], nonlinearity=tf.n
     t_label, t_imgstr = reader.read(t_imagequeue)
     t_imgtensor = tf.image.decode_png(t_imgstr)
     t_reshape_img = tf.cast(tf.reshape(t_imgtensor, [60*90*3]), tf.float32)
-    t_img_batch = tf.train.shuffle_batch([t_reshape_img], batch_size = 20, capacity = 100, min_after_dequeue = 40)
+    t_img_batch = tf.train.shuffle_batch([t_reshape_img], batch_size = 20, capacity = 60, min_after_dequeue = 0)
 
     #getting validation leaves
     v_imagequeue = tf.train.string_input_producer(v_filenames)
     v_label, v_imgstr = reader.read(v_imagequeue)
     v_imgtensor = tf.image.decode_png(v_imgstr)
     v_reshape_img = tf.cast(tf.reshape(v_imgtensor, [60*90*3]), tf.float32)
-    v_img_batch = tf.train.shuffle_batch([v_reshape_img], batch_size = 50, capacity = 250, min_after_dequeue = 100)
+    v_img_batch = tf.train.shuffle_batch([v_reshape_img], batch_size = 50, capacity = 150, min_after_dequeue = 0)
 
     #splitter - decide to run on training or validation set
     choice = tf.placeholder(dtype=tf.bool) #True for training, False for validation
@@ -162,7 +162,7 @@ def buildTraining(t_filenames, v_filenames, layers=[1000,100], nonlinearity=tf.n
 
     return choice, trainstep, loss, init, saver, coord
 
-def runTraining(choice, trainstep, loss, init, saver, coord, name = 'model', numsteps=100, validation_steps=100):
+def runTraining(choice, trainstep, loss, init, saver, coord, name = 'model', numsteps=100, steps_per_validation=100):
     """
     Trains an autoencoder graph for numsteps steps, saving the resulting weights in a .ckpt file.
     Requires: imagename, trainstep, loss, coord, init, saver all with those names.
@@ -179,23 +179,26 @@ def runTraining(choice, trainstep, loss, init, saver, coord, name = 'model', num
     sess.run(init)
     threads = tf.train.start_queue_runners(coord=coord, sess=sess)
     t_losses = []
-    v_losses = []
-    for step in range(numsteps):
+    v_losses = [2500.0] #having this starting value prevents early saving
+    for step in range(numsteps): #train loop
         _, lossstep = sess.run((trainstep,loss), {choice: True})
         t_losses.append(lossstep)
-        if (step+1)%(numsteps//validation_steps) == 0:
+        if (step+1)%steps_per_validation == 0: #validation loop
             lossstep = sess.run(loss, {choice: False})
+            if lossstep < min(v_losses): saver.save(sess, '.\\Models\\'+name+'.ckpt') #early stopping save
             v_losses.append(lossstep)
+#            if step//steps_per_validation > 4 and 4.8*lossstep > sum(v_losses[-6:-1]) and lossstep > sum(t_losses[-2:]):
+#                break #stop training if overfit and validation loss is increasing too much
             print('.',sep='',end='')
     print('\n')
     
-    saver.save(sess, '.\\Models\\'+name+'.ckpt')
+    if min(v_losses) == 2500.0: print('Model not saved!')
 
     coord.request_stop()
     coord.join(threads)
     sess.close()
     tf.reset_default_graph()
-    return t_losses, v_losses
+    return t_losses, v_losses[1:]
 
 #-------------------------------------encode-decode-------------------------------------
 
